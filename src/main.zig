@@ -11,9 +11,9 @@ pub fn main() !void {
     var map = std.AutoHashMap([2]u8, usize).init(std.heap.page_allocator);
     defer map.deinit();
 
-    for (text, 1..) |char, nextIdx| {
-        if (nextIdx == text.len) break;
-        const key = [2]u8{ char, text[nextIdx] };
+    for (text, 0..) |char, nextIdx| {
+        if (nextIdx + 1 >= text.len) break;
+        const key = [2]u8{ char, text[nextIdx + 1] };
         const gop = try map.getOrPut(key);
 
         if (gop.found_existing) {
@@ -23,13 +23,28 @@ pub fn main() !void {
         }
     }
 
-    var iterator = map.iterator();
+    var pairs = std.ArrayList(KV).init(std.heap.page_allocator);
+    defer pairs.deinit();
 
+    var iterator = map.iterator();
     while (iterator.next()) |item| {
-        std.debug.print("[{c}{c}] : {d}\n", .{
-            item.key_ptr.*[0],
-            item.key_ptr.*[1],
-            item.value_ptr.*,
+        try pairs.append(KV{
+            .key = item.key_ptr.*,
+            .value = item.value_ptr.*,
         });
     }
+
+    std.sort.heap(KV, pairs.items, {}, compByValueDesc);
+
+    for (pairs.items) |pair| {
+        std.debug.print("{c}{c} => {d}\n", .{
+            pair.key[0],
+            pair.key[1],
+            pair.value,
+        });
+    }
+}
+
+fn compByValueDesc(_: void, a: KV, b: KV) bool {
+    return a.value > b.value;
 }
